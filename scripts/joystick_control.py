@@ -19,6 +19,6 @@ while True:
                         conn.sendall(b'Ending')
                         #Close the connection
                         break
+                    conn.sendall(data)
             print("Connection broken\n")
             sleep(1.0)
-                    conn.sendall(data)
