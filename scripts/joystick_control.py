@@ -5,6 +5,7 @@ PORT = 2000        # Port to listen on (non-privileged ports are > 1023)
 while True:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind((HOST, PORT))
+        print("Bound port")
         s.listen()
         conn, addr = s.accept()
         with conn:
