@@ -1,5 +1,6 @@
 import socket
 import serial
+from time import sleep
 HOST = ''  # Standard loopback interface address (localhost)
 PORT = 2000        # Port to listen on (non-privileged ports are > 1023)
 while True:
@@ -17,6 +18,7 @@ while True:
                     if(data.decode('utf-8')[0] == 'x'):
                         conn.sendall(b'Ending')
                         #Close the connection
-                        
                         break
+            print("Connection broken\n")
+            sleep(1.0)
                     conn.sendall(data)
