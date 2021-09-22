@@ -20,3 +20,13 @@ This code is meant to run on board the control board on the robot. This code sho
 |A1| Right ultrasonic sensor data |  
 
 Pin 2 is saved for a  potential future external interrupt 
+
+
+#### Raspberry pi 3B+ pinout
+|Pin number|GPIO number|Connectiion|
+|:---:|:---:|:---|
+|12|25|Ultrasonic sensor trigger|
+|18|24|Ultrasonic sensor echo|
+|22|25|Ultrasonic sensor servo input|
+
+The one of the raspberry pi serial port is connected to the arduino pro mini by a usb cable through an FTDI chip 
