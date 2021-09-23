@@ -34,6 +34,8 @@ class SensorTurretHandler:
         self.thread = Thread() #Thread to handle the servo motor
         # GPIO.setmode(GPIO.BOARD)
         GPIO.setup(servoPin, GPIO.OUT)        
+        GPIO.setup(self.ultraTrig, GPIO.OUT)        
+        GPIO.setup(self.ultraEcho, GPIO.IN)        
         self.servo = GPIO.PWM(servoPin, 50) # Creating the PWM instance
         self.servo.start(2.5) #Initialize the servo to the 0 position
         time.sleep(0.5) #Wait for the servo to get to the required position
@@ -57,7 +59,33 @@ class SensorTurretHandler:
         return
 
     def measureDistance(self):
-        time.sleep(0.01)
+        '''
+        Return distance measurement taken by the distance sensor 
+        '''
+            # set Trigger to HIGH
+        GPIO.output(self.ultraTrig, True)
+    
+        # set Trigger after 0.01ms to LOW
+        time.sleep(0.00001)
+        GPIO.output(self.ultraTrig, False)
+    
+        startTime = time.time()
+        stopTime = time.time()
+    
+        # save startTime
+        while GPIO.input(self.ultraEcho) == 0:
+            startTime = time.time()
+        
+        # save time of arrival
+        while GPIO.input(self.ultraEcho) == 1:
+            stopTime = time.time()
+        
+
+        # multiply with the sonic speed (34300 cm/s)
+        # and divide by 2, because there and back
+        distance = ((stopTime - startTime) * 34300) / 2
+    
+        return distance
 
     def scanDistances(self):
         '''
@@ -78,7 +106,7 @@ class SensorTurretHandler:
             self.lastDutyCycle = nextCycle
 
             # TODO: Get distance data scan point here
-            self.measureDistance()
+            print(self.measureDistance())
 
             nextCycle = self.lastDutyCycle + direction*self.step
             
@@ -93,7 +121,6 @@ class SensorTurretHandler:
             # Wait the appropriate amount of time before the next loop cycle
             curr_time = time.time() * 1000
             # Rather than wait a set amount of time, we wait till the time taken by this step is equal to or greater than the time per step
-            print(curr_time - start_time)
             while curr_time - start_time < self.stepTime:
                 time.sleep(0.0005) #The likely time per step is about 0.003 seconds for a 1 rps rotation freq
                 curr_time = time.time()*1000
