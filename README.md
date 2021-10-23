@@ -6,18 +6,17 @@ This code is meant to run on board the control board on the robot. This code sho
 ##### Arduino pinout  
 |Pin | Connection | 
 |:--:| :---------: |
-|3| Left wheel pwm |
-|5| Left wheel direction in3|
+|2| Right wheel encoder C1|
+|13| Right wheel encoder C2|
+|3| Left wheel encoder C1 |
+|12| Left wheel encoder C2|
+|5| Left wheel pwm |
+|4| Left wheel direction in3|
 |6| Left wheel direction in4|
 |9| Right wheel pwm |
 |8| Right wheel direction in1|
 |7| Right wheel direction in2|
-|10| Left ultrasonic sensor motor control |
-|11| Right ultrasonic sensor motor control |
-|12| Left ultrasonic sensor trigger |
-|13| Left ultrasonic sensor data |
-|A0| Right ultrasonic sensor trigger |
-|A1| Right ultrasonic sensor data |  
+ 
 
 Pin 2 is saved for a  potential future external interrupt 
 
