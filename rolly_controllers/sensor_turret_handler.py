@@ -4,10 +4,12 @@ from threading import Thread, Lock
 import math
 import numpy as np
 import enum
+from constants import DIM
 
 class CONSTS(enum.Enum):
     maxServoDuty = 12.5 # The max duty cycle for the servo
     minServoDuty = 2.5  # The min duty cycle for the servo
+
 class SensorTurretHandler:
     '''
     A class that handles rolly's sensor turret
@@ -41,13 +43,18 @@ class SensorTurretHandler:
         time.sleep(0.5) #Wait for the servo to get to the required position
         self.stop_requested = False
         self.thread = Thread(target=self.scanDistances)
-        self.thread.start()
+        self.scan_mutex = Lock()
         self.lastDutyCycle = 0.
         self.step = (self.scanRes/math.pi) * (CONSTS.maxServoDuty.value - CONSTS.minServoDuty.value)
         # The time per step in milliseconds
         self.stepTime = (1.0/(2*scanFreq)) * (scanRes/math.pi) * 1000
+        totalsteps =  math.ceil(math.pi/self.scanRes) + 1
+        # Pre-prepare an array of the total number of scan points per scan
+        self.latestScan = np.zeros((totalsteps, 2))
         print(self.stepTime)
         self.reset_motor()
+        
+        self.thread.start()
     
     def __del__(self):
         self.stop()
@@ -95,6 +102,10 @@ class SensorTurretHandler:
         # The direction the motor is turning in. +1 for anti-clockwise and -1 for clockwise
         direction = 1
         nextCycle = CONSTS.minServoDuty.value
+        scanCounter = 0
+        duty_range = CONSTS.maxServoDuty.value - CONSTS.minServoDuty.value
+        currentScan = np.zeros(self.latestScan.shape)
+        
         while 1:
             # Check if program is to stopped
             if(self.stop_requested):
@@ -106,17 +117,27 @@ class SensorTurretHandler:
             self.lastDutyCycle = nextCycle
 
             # TODO: Get distance data scan point here
-            print(self.measureDistance())
-
+            currentScan[scanCounter][0] = self.measureDistance()
+            currentScan[scanCounter][1] = math.pi*(self.lastDutyCycle - CONSTS.minServoDuty.value)/(duty_range)
+            scanCounter += 1
             nextCycle = self.lastDutyCycle + direction*self.step
             
             if nextCycle > CONSTS.maxServoDuty.value:
                 direction = -1
                 nextCycle = CONSTS.maxServoDuty.value
+                self.scan_mutex.acquire()
+                self.latestScan = np.copy(currentScan)
+                self.scan_mutex.release()
+                scanCounter = 0
 
             elif nextCycle < CONSTS.minServoDuty.value:
                 direction = 1
                 nextcycle = CONSTS.minServoDuty.value
+                self.scan_mutex.acquire()
+                self.latestScan = np.copy(currentScan)
+                self.scan_mutex.release()
+                scanCounter = 0
+                
             
             # Wait the appropriate amount of time before the next loop cycle
             curr_time = time.time() * 1000
@@ -134,3 +155,9 @@ class SensorTurretHandler:
 if __name__ == '__main__':
     GPIO.setmode(GPIO.BCM)
     d=SensorTurretHandler(scanRes=0.0873)
+
+    time.sleep(2)
+    while 1:
+        time.sleep(2)
+        print(d.latestScan)
+
