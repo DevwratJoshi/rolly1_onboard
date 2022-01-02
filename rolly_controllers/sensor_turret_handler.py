@@ -4,11 +4,7 @@ from threading import Thread, Lock
 import math
 import numpy as np
 import enum
-from constants import DIM
-
-class CONSTS(enum.Enum):
-    maxServoDuty = 12.5 # The max duty cycle for the servo
-    minServoDuty = 2.5  # The min duty cycle for the servo
+from .constants import CONSTS
 
 class SensorTurretHandler:
     '''
@@ -105,7 +101,6 @@ class SensorTurretHandler:
         scanCounter = 0
         duty_range = CONSTS.maxServoDuty.value - CONSTS.minServoDuty.value
         currentScan = np.zeros(self.latestScan.shape)
-        
         while 1:
             # Check if program is to stopped
             if(self.stop_requested):
@@ -116,10 +111,9 @@ class SensorTurretHandler:
             start_time = time.time()*1000
             self.lastDutyCycle = nextCycle
 
-            # TODO: Get distance data scan point here
             currentScan[scanCounter][0] = self.measureDistance()
             currentScan[scanCounter][1] = math.pi*(self.lastDutyCycle - CONSTS.minServoDuty.value)/(duty_range)
-            scanCounter += 1
+            scanCounter += direction
             nextCycle = self.lastDutyCycle + direction*self.step
             
             if nextCycle > CONSTS.maxServoDuty.value:
@@ -128,14 +122,16 @@ class SensorTurretHandler:
                 self.scan_mutex.acquire()
                 self.latestScan = np.copy(currentScan)
                 self.scan_mutex.release()
-                scanCounter = 0
+                currentScan = np.ones(self.latestScan.shape) * -1
+                scanCounter = self.latestScan.shape[0] - 1
 
             elif nextCycle < CONSTS.minServoDuty.value:
                 direction = 1
-                nextcycle = CONSTS.minServoDuty.value
+                nextCycle = CONSTS.minServoDuty.value
                 self.scan_mutex.acquire()
                 self.latestScan = np.copy(currentScan)
                 self.scan_mutex.release()
+                currentScan = np.ones(self.latestScan.shape) * -1
                 scanCounter = 0
                 
             
@@ -160,4 +156,5 @@ if __name__ == '__main__':
     while 1:
         time.sleep(2)
         print(d.latestScan)
-
+    
+    d.stop()
