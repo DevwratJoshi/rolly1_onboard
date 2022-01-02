@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import serial
-from constants import DIM
+from constants import CONSTS
 
 class Wheel:
     def __init__(self, id, flipVel=False):
@@ -64,8 +64,8 @@ class RobotVelocityController:
         @param v goal linear velocity
         @param w goal angular velocity
         '''
-        r_vel = (2*v+ w*DIM.wheel_sep)/2/DIM.wheel_rad
-        l_vel = (2*v -  w*DIM.wheel_sep)/2/DIM.wheel_rad
+        r_vel = (2*v+ w*CONSTS.wheel_sep)/2/CONSTS.wheel_rad
+        l_vel = (2*v -  w*CONSTS.wheel_sep)/2/CONSTS.wheel_rad
 
         self.wheels["right"].set_rot_vel(r_vel)
         self.wheels["left"].set_rot_vel(l_vel)
