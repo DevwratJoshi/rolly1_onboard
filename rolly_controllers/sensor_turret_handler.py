@@ -41,7 +41,7 @@ class SensorTurretHandler:
         self.thread = Thread(target=self.scanDistances)
         self.scan_mutex = Lock()
         self.lastDutyCycle = 0.
-        self.step = (self.scanRes/math.pi) * (CONSTS.maxServoDuty.value - CONSTS.minServoDuty.value)
+        self.step = (self.scanRes/math.pi) * (CONSTS.maxServoDuty - CONSTS.minServoDuty)
         # The time per step in milliseconds
         self.stepTime = (1.0/(2*scanFreq)) * (scanRes/math.pi) * 1000
         totalsteps =  math.ceil(math.pi/self.scanRes) + 1
@@ -56,8 +56,8 @@ class SensorTurretHandler:
         self.stop()
 
     def reset_motor(self):
-        self.servo.ChangeDutyCycle(CONSTS.minServoDuty.value)
-        self.lastDutyCycle = CONSTS.minServoDuty.value
+        self.servo.ChangeDutyCycle(CONSTS.minServoDuty)
+        self.lastDutyCycle = CONSTS.minServoDuty
         time.sleep(0.5)
         return
 
@@ -97,9 +97,9 @@ class SensorTurretHandler:
         '''
         # The direction the motor is turning in. +1 for anti-clockwise and -1 for clockwise
         direction = 1
-        nextCycle = CONSTS.minServoDuty.value
+        nextCycle = CONSTS.minServoDuty
         scanCounter = 0
-        duty_range = CONSTS.maxServoDuty.value - CONSTS.minServoDuty.value
+        duty_range = CONSTS.maxServoDuty - CONSTS.minServoDuty
         currentScan = np.zeros(self.latestScan.shape)
         while 1:
             # Check if program is to stopped
@@ -112,22 +112,22 @@ class SensorTurretHandler:
             self.lastDutyCycle = nextCycle
 
             currentScan[scanCounter][0] = self.measureDistance()
-            currentScan[scanCounter][1] = math.pi*(self.lastDutyCycle - CONSTS.minServoDuty.value)/(duty_range)
+            currentScan[scanCounter][1] = math.pi*(self.lastDutyCycle - CONSTS.minServoDuty)/(duty_range)
             scanCounter += direction
             nextCycle = self.lastDutyCycle + direction*self.step
             
-            if nextCycle > CONSTS.maxServoDuty.value:
+            if nextCycle > CONSTS.maxServoDuty:
                 direction = -1
-                nextCycle = CONSTS.maxServoDuty.value
+                nextCycle = CONSTS.maxServoDuty
                 self.scan_mutex.acquire()
                 self.latestScan = np.copy(currentScan)
                 self.scan_mutex.release()
                 currentScan = np.ones(self.latestScan.shape) * -1
                 scanCounter = self.latestScan.shape[0] - 1
 
-            elif nextCycle < CONSTS.minServoDuty.value:
+            elif nextCycle < CONSTS.minServoDuty:
                 direction = 1
-                nextCycle = CONSTS.minServoDuty.value
+                nextCycle = CONSTS.minServoDuty
                 self.scan_mutex.acquire()
                 self.latestScan = np.copy(currentScan)
                 self.scan_mutex.release()
