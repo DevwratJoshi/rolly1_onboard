@@ -4,7 +4,6 @@ from threading import Thread, Lock
 import math
 import numpy as np
 import enum
-from .constants import CONSTS
 
 class SensorTurretHandler:
     '''
@@ -38,15 +37,19 @@ class SensorTurretHandler:
         self.servo.start(2.5) #Initialize the servo to the 0 position
         time.sleep(0.5) #Wait for the servo to get to the required position
         self.stop_requested = False
-        self.thread = Thread(target=self.scanDistances)
+        self.thread = Thread(target=self.scanDistances, daemon=True)
         self.scan_mutex = Lock()
         self.lastDutyCycle = 0.
+
         self.step = (self.scanRes/math.pi) * (CONSTS.maxServoDuty - CONSTS.minServoDuty)
         # The time per step in milliseconds
         self.stepTime = (1.0/(2*scanFreq)) * (scanRes/math.pi) * 1000
-        totalsteps =  math.ceil(math.pi/self.scanRes) + 1
-        # Pre-prepare an array of the total number of scan points per scan
-        self.latestScan = np.zeros((totalsteps, 2))
+        self.scan_angles = np.arange(CONSTS.minServoAngle, CONSTS.maxServoAngle, self.scanRes)
+        self.totalSteps = len(self.scan_angles)
+        self.dutyCycles = self.scan_angles/(CONSTS.maxServoAngle - CONSTS.minServoAngle) * (CONSTS.maxServoDuty - CONSTS.minServoDuty) + CONSTS.minServoAngle
+
+        self.latestScan = np.zeros((self.totalSteps, 2)) # Distance value, degrees
+        self.latestScan[:,1] = self.scan_angles
         print(self.stepTime)
         self.reset_motor()
         
@@ -89,6 +92,12 @@ class SensorTurretHandler:
         distance = ((stopTime - startTime) * 34300) / 2
     
         return distance
+    def changeDutyCycle(self, value):
+        '''
+        Change duty cycle of the servo, and also store the last value written to the servo
+        '''
+        self.servo.ChangeDutyCycle(value)
+        self.lastDutyCycle = value
 
     def scanDistances(self):
         '''
@@ -101,39 +110,35 @@ class SensorTurretHandler:
         scanCounter = 0
         duty_range = CONSTS.maxServoDuty - CONSTS.minServoDuty
         currentScan = np.zeros(self.latestScan.shape)
+        currentScan[:,1] = self.scan_angles
         while 1:
             # Check if program is to stopped
             if(self.stop_requested):
                 self.reset_motor()
                 self.stop_requested = False
                 return
-            self.servo.ChangeDutyCycle(nextCycle)
             start_time = time.time()*1000
-            self.lastDutyCycle = nextCycle
 
             currentScan[scanCounter][0] = self.measureDistance()
-            currentScan[scanCounter][1] = math.pi*(self.lastDutyCycle - CONSTS.minServoDuty)/(duty_range)
             scanCounter += direction
-            nextCycle = self.lastDutyCycle + direction*self.step
             
-            if nextCycle > CONSTS.maxServoDuty:
+            if scanCounter >= self.totalSteps:
                 direction = -1
-                nextCycle = CONSTS.maxServoDuty
+                scanCounter = self.totalSteps -1
                 self.scan_mutex.acquire()
                 self.latestScan = np.copy(currentScan)
                 self.scan_mutex.release()
-                currentScan = np.ones(self.latestScan.shape) * -1
-                scanCounter = self.latestScan.shape[0] - 1
+                currentScan[:,0] = np.ones(self.totalSteps) * -1
 
-            elif nextCycle < CONSTS.minServoDuty:
+            elif scanCounter < 0:
                 direction = 1
-                nextCycle = CONSTS.minServoDuty
+                scanCounter = 0
                 self.scan_mutex.acquire()
                 self.latestScan = np.copy(currentScan)
                 self.scan_mutex.release()
-                currentScan = np.ones(self.latestScan.shape) * -1
-                scanCounter = 0
+                currentScan[:,0] = np.ones(self.totalSteps) * -1
                 
+            self.changeDutyCycle(self.dutyCycles[scanCounter])
             
             # Wait the appropriate amount of time before the next loop cycle
             curr_time = time.time() * 1000
@@ -149,6 +154,7 @@ class SensorTurretHandler:
 
 
 if __name__ == '__main__':
+    from constants import CONSTS
     GPIO.setmode(GPIO.BCM)
     d=SensorTurretHandler(scanRes=0.0873)
 
@@ -158,3 +164,6 @@ if __name__ == '__main__':
         print(d.latestScan)
     
     d.stop()
+
+else:
+    from .constants import CONSTS    
