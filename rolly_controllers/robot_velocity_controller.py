@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import serial
-from constants import CONSTS
+from .constants import CONSTS
 
 class Wheel:
     def __init__(self, id, flipVel=False):

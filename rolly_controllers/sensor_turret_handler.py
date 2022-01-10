@@ -3,7 +3,6 @@ import time
 from threading import Thread, Lock
 import math
 import numpy as np
-import enum
 
 class SensorTurretHandler:
     '''
@@ -16,7 +15,7 @@ class SensorTurretHandler:
     2) Rotate the servo turret back and forth between 0 and 180 degrees at the prescribed step resolution and freqency
     3) Take sensor readings at every step
     '''
-    def __init__(self, servoPin=25, ultraTrigger=18, ultraEcho=24, scanFreq=1.5, scanRes=0.0174533):
+    def __init__(self, servoPin=25, ultraTrigger=18, ultraEcho=24, scanFreq=1, scanRes=0.0174533):
         '''
         @param servoPin The servo input pin (GPIO pin number)
         @param ultraTrigger The HCSR04 trigger pin (GPIO pin number)
@@ -46,11 +45,11 @@ class SensorTurretHandler:
         self.stepTime = (1.0/(2*scanFreq)) * (scanRes/math.pi) * 1000
         self.scan_angles = np.arange(CONSTS.minServoAngle, CONSTS.maxServoAngle, self.scanRes)
         self.totalSteps = len(self.scan_angles)
-        self.dutyCycles = self.scan_angles/(CONSTS.maxServoAngle - CONSTS.minServoAngle) * (CONSTS.maxServoDuty - CONSTS.minServoDuty) + CONSTS.minServoAngle
-
+        self.dutyCycles = self.scan_angles/(CONSTS.maxServoAngle - CONSTS.minServoAngle) * (CONSTS.maxServoDuty - CONSTS.minServoDuty) + CONSTS.minServoDuty
+        #print(self.dutyCycles)
         self.latestScan = np.zeros((self.totalSteps, 2)) # Distance value, degrees
         self.latestScan[:,1] = self.scan_angles
-        print(self.stepTime)
+        #print(self.stepTime)
         self.reset_motor()
         
         self.thread.start()
@@ -85,13 +84,16 @@ class SensorTurretHandler:
         # save time of arrival
         while GPIO.input(self.ultraEcho) == 1:
             stopTime = time.time()
+            if stopTime - startTime > 0.0176:
+                return -1
         
 
-        # multiply with the sonic speed (34300 cm/s)
+        # multiply with the sonic speed (343 m/s)
         # and divide by 2, because there and back
-        distance = ((stopTime - startTime) * 34300) / 2
-    
+        distance = ((stopTime - startTime) * 343) / 2
+        #print(distance) 
         return distance
+    
     def changeDutyCycle(self, value):
         '''
         Change duty cycle of the servo, and also store the last value written to the servo
@@ -137,7 +139,7 @@ class SensorTurretHandler:
                 self.latestScan = np.copy(currentScan)
                 self.scan_mutex.release()
                 currentScan[:,0] = np.ones(self.totalSteps) * -1
-                
+            #print(self.dutyCycles[scanCounter])       
             self.changeDutyCycle(self.dutyCycles[scanCounter])
             
             # Wait the appropriate amount of time before the next loop cycle
@@ -156,12 +158,13 @@ class SensorTurretHandler:
 if __name__ == '__main__':
     from constants import CONSTS
     GPIO.setmode(GPIO.BCM)
-    d=SensorTurretHandler(scanRes=0.0873)
+    #d=SensorTurretHandler(scanRes=0.0873)
+    d=SensorTurretHandler(scanRes=0.1)
 
     time.sleep(2)
     while 1:
         time.sleep(2)
-        print(d.latestScan)
+        #print(d.latestScan)
     
     d.stop()
 
